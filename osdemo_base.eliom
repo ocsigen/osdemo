@@ -5,7 +5,7 @@ let%server application_name = !Osdemo_config.app_name
 
 let%client application_name = Eliom_client.get_application_name ()
 
-let%shared displayed_app_name = "osdemo"
+let%shared displayed_app_name = "Ocsigen Start demo app"
 
 (* Database initialization *)
 let () =
@@ -19,7 +19,7 @@ let () =
     ()
 
 let () = Os_email.set_mailer "/usr/sbin/sendmail"
-let () = Os_email.set_from_addr ("osdemo team", "noreply@DEFAULT.DEFAULT")
+let () = Os_email.set_from_addr ("Ocsigen team", "noreply@ocsigen.org")
 
 (* Create a module for the application. See
    https://ocsigen.org/eliom/manual/clientserver-applications for more

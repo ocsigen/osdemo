@@ -34,7 +34,7 @@ CLIENT_PACKAGES       := lwt.ppx js_of_ocaml.ppx js_of_ocaml.deriving.ppx \
                          ppx_deriving.std ocsigen-start.client
 
 # Automatically install packages via NPM
-USE_NPM               := yes
+USE_NPM               := no
 
 ##----------------------------------------------------------------------
 

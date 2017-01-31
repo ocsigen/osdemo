@@ -37,7 +37,8 @@
     </extension>
     %%% This will include the packages defined as SERVER_PACKAGES in your Makefile:
     %%PACKAGES%%
-    <host hostfilter="*">
+    <host hostfilter="*" defaulthostname="ocsigen.org" defaulthttpport="80" defaulthttpsport="443">
+     <site dir="ocsigen-start/demo"> 
       <static dir="%%FILESDIR%%" />
       %%ELIOM_MODULES%%
       <eliommodule module="%%LIBDIR%%/%%PROJECT_NAME%%.cma">
@@ -64,6 +65,7 @@
             exposed_headers="x-eliom-application,x-eliom-location,x-eliom-set-process-cookies,x-eliom-set-cookie-substitutes"/>
         </then>
       </if>
+     </site>
     </host>
   </server>
 </ocsigen>
