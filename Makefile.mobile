@@ -1,0 +1,459 @@
+#----------------------------------------------------------------------
+#      This Makefile contains rules about the mobile application.
+#----------------------------------------------------------------------
+
+WWW_PATH := local/var/www/$(PROJECT_NAME)
+
+mobile-all: assets android browser # ios
+
+##----------------------------------------------------------------------
+## Errors definition
+
+define ERROR_APP_SERVER
+
+Error: APP_SERVER environment is not set!
+
+You need to define the environment variable APP_SERVER in order to build the
+mobile app. This server is the one your mobile app is connecting to and should
+be running when building the app, so the matching Eliom JS and CSS files can be
+retrieved.
+
+Example:
+$$ make APP_SERVER=http://eliomapp.example.com APP_REMOTE=yes android
+
+endef
+
+define ERROR_APP_REMOTE
+
+Error: APP_REMOTE environment is not set!
+
+You need to define the environment variable APP_REMOTE to 'yes' or 'no' in
+order to build the mobile app. If set to 'yes', JS and CSS files will be
+retrieved from the remote server defined in APP_SERVER; if set to 'no', locally
+generated ones will be used instead.
+
+Example:
+$$ make APP_REMOTE=yes APP_SERVER=http://eliomapp.example.com android
+
+endef
+
+define ERROR_DOWNLOAD_JS
+
+Error: Downloading of Eliom JS file from server $(APP_SERVER) has failed.
+Please check that $(APP_SERVER) is running properly and try again.
+
+endef
+
+define ERROR_DOWNLOAD_CSS
+
+Error: Downloading of Eliom CSS file from server $(APP_SERVER) has failed.
+Please check that $(APP_SERVER) is running properly and try again.
+
+endef
+
+##----------------------------------------------------------------------
+## Warnings definition
+
+define WARNING_NO_CORDOVA
+
+WARNING: 'cordova' command not found in PATH. Assuming we don't need it for the
+current build. It makes sense if you only need Hot Code Push update files on a
+server, for example. If you want to build the actual app, you need to install
+Cordova. See the documentation at the beginning of 'Makefile.mobile' for
+detailed instructions.
+
+endef
+
+
+##----------------------------------------------------------------------
+## Environment variables definiton.
+
+APPJS  := $(CORDOVAPATH)/www/$(PROJECT_NAME).js
+APPCSS := $(CORDOVAPATH)/www/css/$(PROJECT_NAME).css
+
+##----------------------------------------------------------------------
+## Mobile app related ## variables checking
+
+check-app-env:
+ifeq ($(strip $(APP_SERVER)),)
+	$(error $(ERROR_APP_SERVER))
+endif
+ifeq ($(strip $(APP_REMOTE)),)
+	$(error $(ERROR_APP_REMOTE))
+endif
+
+# Rules to get the JS and CSS files when building. If APP_REMOTE is set to yes,
+# the JS and CSS files are retrieved from APP_SERVER. Else, it copies the local
+# JS and CSS files generated during the server compilation.
+
+$(APPJS): $(JS_PREFIX).js
+ifeq ($(APP_REMOTE),yes)
+	APPJS_FILE=$$(curl -s -f $(APP_SERVER)$(APP_PATH)/ | cat | grep -E -o -m 1 '$(PROJECT_NAME)_[a-f0-9]*?\.js') &&\
+	curl -s -o $@ $(APP_SERVER)$(APP_PATH)/$$APPJS_FILE
+else
+	cp -f $(WWW_PATH)/`readlink $(JS_PREFIX).js` $@
+endif
+
+$(APPCSS):
+ifeq ($(APP_REMOTE),yes)
+	APPCSS_FILE=$$(curl -s -f $(APP_SERVER)$(APP_PATH)/ | cat | grep -E -o -m 1 '$(PROJECT_NAME)_[a-f0-9]*?\.css') &&\
+	curl -s -o $@ $(APP_SERVER)$(APP_PATH)/css/$$APPCSS_FILE
+else
+	cp -f $(WWW_PATH)/css/`readlink $(CSS_PREFIX).css` $@
+endif
+
+##----------------------------------------------------------------------
+## Regenerate config files at each build, in case an environment variable has
+## changed.
+.PHONY: clean \
+        icons spashes $(IOS_SPLASHES) \
+        chcp app-config check-app-env \
+        $(APPJS) $(APPCSS) \
+        $(ADD_PLATFORMS) $(PLATFORMS) $(EMULATE_PLATFORMS) $(RUN_PLATFORMS) \
+        $(CORDOVAPATH)/www/chcp.json \
+        $(CORDOVAPATH)/www/eliom.html \
+        $(CORDOVAPATH)/www/index.html \
+        $(CORDOVAPATH)/config.xml
+
+ifeq ($(USE_NPM), yes)
+CORDOVA = PATH=$(PWD)/node_modules/cordova/bin:$$PATH cordova
+CORDOVA_HCP = PATH=$(PWD)/node_modules/cordova-hot-code-push-cli/bin:$$PATH cordova-hcp
+else
+CORDOVA = cordova
+CORDOVA_HCP = cordova-hcp
+endif
+
+# Necessary Cordova and static files directories. They are created when
+# creating the Cordova project.
+CORDOVA_DIRS := www www/css www/fonts www/images www/img www/js
+
+# If Cordova is installed, use it to create a new project
+# If not, we assume we don't need a full fledge project and simply create
+# necessary directories (typically on a server where we only want to set up
+# Hot Code Push).
+# The CSS, JS, logo, index and config.xml created by the Cordova CLI are removed
+# to be replaced later.
+$(CORDOVAPATH):
+ifeq ($(USE_NPM), yes)
+	npm install cordova cordova-hot-code-push-cli read-package-json xml2js
+endif
+	$(CORDOVA) create $(CORDOVAPATH) $(MOBILE_APP_ID) "$(MOBILE_APP_NAME)"
+	rm -f $(CORDOVAPATH)/www/css/index.css
+	rm -f $(CORDOVAPATH)/www/js/index.js
+	rm -f $(CORDOVAPATH)/www/img/logo.png
+	rm -f $(CORDOVAPATH)/www/index.html
+	rm -f $(CORDOVAPATH)/config.xml
+	$(foreach dir,$(CORDOVA_DIRS),mkdir -p $@/$(dir);)
+
+##----------------------------------------------------------------------
+## Rules for static files.
+
+# Function to list files in a given directory $(1), and change prefix directory
+# to the target one $(2)
+# Example: $(call static_targets,$(SOURCE_DIR),$(TARGET_DIR))
+static_targets = $(patsubst $(1)%,$(2)%,$(shell find $(1) -type f | grep -v .well-known | grep  -v "/fonts/.*\\([.]svg\\|[.]eot\\|webfont[.]ttf\\)$$"))
+
+# Cordova static files which needs to be copied to the Cordova project
+# directory.
+CORDOVA_STATIC_FILES := \
+	$(CORDOVAPATH)/.chcpignore \
+	$(call static_targets,$(MOBILESTATICPATH)/www,$(CORDOVAPATH)/www)
+
+LOCAL_STATIC_FILES := $(call static_targets,$(LOCAL_STATIC)/css,$(CORDOVAPATH)/www/css) $(call static_targets,$(LOCAL_STATIC)/images,$(CORDOVAPATH)/www/images) $(call static_targets,$(LOCAL_STATIC)/fonts,$(CORDOVAPATH)/www/fonts)
+
+# Static files dependencies: if a file changes in these directory, a new copy
+# of static files will be triggered
+# The rules related to static files are essentially copy in the appropriate
+# mobile directory.
+$(CORDOVA_STATIC_FILES): $(CORDOVAPATH)/%: $(MOBILESTATICPATH)/%
+	cp -rf $< $@
+
+$(LOCAL_STATIC_FILES): $(CORDOVAPATH)/www/%: $(LOCAL_STATIC)/%
+	cp -rf $< $@
+
+
+##----------------------------------------------------------------------
+## Rules for cordova config files like index.html, eliom_loader.js, etc.
+
+# Parse APP_SERVER and extract host, scheme, port. A bit rudimentary,
+# but it should work for URLs starting with http:// or https://.
+
+APP_SCHEME = $(shell echo $(APP_SERVER) | cut -d : -f 1)
+APP_HOST = $(shell echo $(APP_SERVER) | cut -d / -f 3 | cut -d : -f 1)
+APP_PORT = $(shell echo $(APP_SERVER) | cut -d / -f 3 | cut -d : -f 2)
+
+ifneq ($(APP_PORT),"")
+APP_PORT_ARG="port=\"$(APP_PORT)\""
+else
+APP_PORT_ARG=
+endif
+
+# This rule generates the config.xml file from mobile/config.xml.in.
+$(CORDOVAPATH)/config.xml: mobile/config.xml.in $(CORDOVAPATH)
+	sed -e "s,%%APPSERVER%%,$(APP_SERVER),g" \
+	    -e "s,%%APPPATH%%,$(APP_PATH),g" \
+	    -e "s,%%APPHOST%%,$(APP_HOST),g" \
+	    -e "s,%%APPPORTARG%%,$(APP_PORT_ARG),g" \
+	    -e "s,%%APPSCHEME%%,$(APP_SCHEME),g" \
+	    -e "s,%%APPID%%,$(MOBILE_APP_ID),g" \
+	    -e "s,%%MOBILE_APP_NAME%%,$(MOBILE_APP_NAME),g" \
+	    -e "s,%%MOBILE_APP_VERSION%%,$(MOBILE_APP_VERSION),g" \
+	    -e "s,%%MOBILE_DESCRIPTION%%,$(MOBILE_DESCRIPTION),g" \
+	    -e "s,%%MOBILE_AUTHOR_EMAIL%%,$(MOBILE_AUTHOR_EMAIL),g" \
+	    -e "s,%%MOBILE_AUTHOR_HREF%%,$(MOBILE_AUTHOR_HREF),g" \
+	    -e "s,%%MOBILE_AUTHOR_DESCRIPTION%%,$(MOBILE_AUTHOR_DESCRIPTION),g" \
+	    -e "s,%%MOBILE_ANDROID_SDK_VERSION%%,$(MOBILE_ANDROID_SDK_VERSION),g" \
+	    -e "s,%%MOBILE_NOTIFICATIONS_SENDER_ID%%,$(MOBILE_NOTIFICATIONS_SENDER_ID),g" \
+	    mobile/config.xml.in > $@
+
+# This rule generates index.html. md5sum is used to set the right JavaScript
+# filename in the page.
+$(CORDOVAPATH)/www/index.html: $(CORDOVAPATH) $(APPJS) mobile/index.html.in
+	HASH=$$(md5sum $(APPJS) | cut -d ' ' -f 1) && \
+	sed -e "s,%%APPNAME%%,$(PROJECT_NAME)_$$HASH,g" \
+	    -e "s,%%APPSERVER%%,$(APP_SERVER),g" \
+	    -e "s,%%APPPATH%%,$(APP_PATH),g" \
+	    -e "s,%%MOBILE_APP_NAME%%,$(MOBILE_APP_NAME),g" \
+	    mobile/index.html.in > \
+	$(CORDOVAPATH)/www/index.html
+
+# This rule generates eliom.html. md5sum is used to set the right JavaScript and
+# CSS filenames in the page.
+$(CORDOVAPATH)/www/eliom.html: $(CORDOVAPATH) \
+                               $(APPJS) $(APPCSS) mobile/eliom.html.in
+	JS_HASH=$$(md5sum $(APPJS) | cut -d ' ' -f 1) && \
+	CSS_HASH=$$(md5sum $(APPCSS) | cut -d ' ' -f 1) && \
+	sed -e "s,%%APPNAME%%,$(PROJECT_NAME)_$$JS_HASH,g" \
+	    -e "s,%%APPPATH%%,$(APP_PATH),g" \
+	    -e "s,%%PROJECTNAME%%,$(PROJECT_NAME),g" \
+	    -e "s,%%APPSERVER%%,$(APP_SERVER),g" \
+	    mobile/eliom.html.in > $@
+
+# Eliom loader is used in the index.html to retrieve update from the server.
+mobile/eliom_loader.byte: mobile/eliom_loader.ml
+	ocamlfind ocamlc \
+	    -package js_of_ocaml,js_of_ocaml.ppx,lwt.ppx \
+	    -linkpkg -o mobile/eliom_loader.byte \
+	    $<
+
+$(CORDOVAPATH)/www/eliom_loader.js: mobile/eliom_loader.byte
+	js_of_ocaml $< -o $@
+
+# app-config builds all needed files by the mobile application.
+app-config: $(CORDOVAPATH)/www/index.html \
+            $(CORDOVAPATH)/www/eliom.html \
+            $(CORDOVAPATH)/www/eliom_loader.js \
+            $(CORDOVAPATH)/config.xml \
+            $(CORDOVAPATH)/www/chcp.manifest \
+            $(CORDOVAPATH)/www/chcp.json
+
+##----------------------------------------------------------------------
+## Rules to update the mobile applications. For the moment, Cordova Hot Code
+## Push is used.
+
+# Get the actual timestamp which will be used by chcp.json.
+TIMESTAMP := $(shell date +%y%m%d-%H%M%S)
+
+# Build the chcp.manifest with cordova-hcp build for updates. First, it updates
+# and copies all files for the mobile application.
+$(CORDOVAPATH)/www/chcp.manifest: $(APPJS) $(APPCSS) \
+                                  $(CORDOVAPATH) $(CORDOVA_STATIC_FILES) \
+                                  $(LOCAL_STATIC_FILES)
+	cd $(CORDOVAPATH) ; $(CORDOVA_HCP) build
+	$(RM) $(CORDOVAPATH)/www/chcp.json
+
+# Build the chcp.json based on mobile/chcp.json.in after creating the
+# chcp.manifest.
+$(CORDOVAPATH)/www/chcp.json: mobile/chcp.json.in \
+                              $(CORDOVAPATH)/www/chcp.manifest
+	sed -e "s,%%APPSERVER%%,$(APP_SERVER),g" \
+	    -e "s,%%APPPATH%%,$(APP_PATH),g" \
+	    -e "s,%%DATE%%,$(TIMESTAMP),g" \
+	    $< > $@
+
+# Create the $(TIMESTAMP) directory where updates will be copied. First, it
+# needs to generate and copy all files needed by the mobile application.
+$(WWW_PATH)/update/$(TIMESTAMP): app-config check-app-env \
+                                 $(CORDOVA_STATIC_FILES) $(LOCAL_STATIC_FILES)
+	mkdir -p $(WWW_PATH)/update
+	cp -r $(CORDOVAPATH)/www $@
+
+# Build the chcp configuration based on the timestamp. First, it calls the rule
+# to create the update/TIMESTAMP directory where updated files will be copied
+# and secondly, it copies the chcp.json generated previously in the update/conf
+# directory.
+$(WWW_PATH)/update/conf/chcp.json: $(WWW_PATH)/update/$(TIMESTAMP)
+	mkdir -p $(WWW_PATH)/update/conf
+	cp $</chcp.json $@
+
+chcp: $(WWW_PATH)/update/conf/chcp.json
+
+assets: $(CORDOVAPATH) chcp
+
+##----------------------------------------------------------------------
+## Cordova platform rules
+
+# Add the platform to the Cordova project.
+# FIXME/IMPROVEME: true is used to avoid to stop building
+# the application if the platform is already added. The disadvantage of
+# this method is any error will be ignored.
+$(CORDOVAPATH)/platforms/%: check-app-env assets icons-cp-% $(CORDOVAPATH)
+	cd $(CORDOVAPATH) ;\
+	$(CORDOVA) platform add $* ; true
+
+ADD_PLATFORMS := add-android add-browser add-ios add-windows
+
+$(ADD_PLATFORMS): add-%: $(CORDOVAPATH)/platforms/%
+
+##----------------------------------------------------------------------
+## Cordova build rules.
+
+# debug build by default
+PLATFORMS := android ios browser
+
+# before building, environment variables are checked and assets are copied.
+$(PLATFORMS): %: byte check-app-env icons-% assets icons-cp-% add-%
+	cd $(CORDOVAPATH) ;\
+	$(CORDOVA) build $(CORDOVA_FLAGS) $*
+
+# release build
+RELEASE_PLATFORMS := android-release ios-release
+
+$(RELEASE_PLATFORMS): CORDOVA_FLAGS = -release
+$(RELEASE_PLATFORMS): %-release: %
+
+##----------------------------------------------------------------------
+## Cordova emulate rules.
+
+EMULATE_PLATFORMS := emulate-android emulate-ios
+
+$(EMULATE_PLATFORMS): emulate-%: byte check-app-env icons-% assets icons-cp-% %
+	cd $(CORDOVAPATH) ;\
+	$(CORDOVA) emulate --nobuild $*
+
+##----------------------------------------------------------------------
+## Cordova run rules.
+
+RUN_PLATFORMS := run-android run-ios run-browser
+
+# Run the mobile app on a platform
+# run-(android|ios|windows)
+$(RUN_PLATFORMS): run-%: byte check-app-env icons-% assets %
+	cd $(CORDOVAPATH) ;\
+	$(CORDOVA) run --nobuild $*
+
+##----------------------------------------------------------------------
+## Rules for the icons and splashes generation.
+
+CORDOVA_RES_PATH   = $(CORDOVAPATH)/res
+
+## Android icons names. It corresponds to ldpi, mdpi, hdpi, xhdpi, xxhdpi and
+## xxxhdpi.
+ANDROID_ICON_NAMES = \
+	icon-36 \
+	icon-48 \
+	icon-72 \
+	icon-96 \
+	icon-144 \
+	icon-192
+
+ANDROID_ICONS_PATH = $(MOBILESTATICPATH)/res/android
+ANDROID_ICONS      = $(foreach name,$(ANDROID_ICON_NAMES),$(ANDROID_ICONS_PATH)/$(name).png)
+
+IOS_ICON_NAMES = \
+	icon-20 icon-20@2x \
+	icon-40 icon-40@2x \
+	icon-50 icon-50@2x \
+	icon-60 icon-60@2x icon-60@3x \
+	icon-72 icon-72@2x \
+	icon-76 icon-76@2x \
+	icon-83.5@2x \
+	icon icon@2x \
+	icon-small icon-small@2x icon-small@3x
+
+IOS_ICONS_PATH   = $(MOBILESTATICPATH)/res/ios
+IOS_ICONS        = $(foreach name,$(IOS_ICON_NAMES),$(IOS_ICONS_PATH)/$(name).png)
+
+# Icons creation (ImageMagick is necessary)
+ICON_PNG         := assets/images/icon.png
+convert_android  = convert -background none -resize
+convert_ios      = convert -background white -resize
+
+$(ANDROID_ICONS_PATH) $(IOS_ICONS_PATH):
+	mkdir -p $@
+
+# Simple icons (Android)
+$(ANDROID_ICONS_PATH)/icon-%.png: $(ICON_PNG) $(ANDROID_ICONS_PATH)
+	$(convert_android) $*x$* $< $@
+
+# Triple size icons (iOS)
+$(IOS_ICONS_PATH)/icon-%@3x.png: $(ICON_PNG) $(IOS_ICONS_PATH)
+	size=$$((3 * $*)) ;\
+	$(convert_ios) $${size}x$${size} $< $@
+
+# Double size icons (iOS)
+$(IOS_ICONS_PATH)/icon-%@2x.png: $(ICON_PNG) $(IOS_ICONS_PATH)
+	size=$$((2 * $*)) ;\
+	$(convert_ios) $${size}x$${size} $< $@
+
+# Simple icons (iOS)
+$(IOS_ICONS_PATH)/icon-%.png: $(ICON_PNG) $(IOS_ICONS_PATH)
+	$(convert_ios) $*x$* $< $@
+
+# iOS icons with special names
+# To add one, use a rule like this:
+# $(ICON_WITH_SPECIAL_NAME): $(ICON_WITH_PIXELS.png); cp $< $@
+$(IOS_ICONS_PATH)/icon-small.png: $(IOS_ICONS_PATH)/icon-29.png; cp $< $@
+$(IOS_ICONS_PATH)/icon-small@2x.png: $(IOS_ICONS_PATH)/icon-29@2x.png; cp $< $@
+$(IOS_ICONS_PATH)/icon-small@3x.png: $(IOS_ICONS_PATH)/icon-29@3x.png; cp $< $@
+$(IOS_ICONS_PATH)/icon.png: $(IOS_ICONS_PATH)/icon-57.png; cp $< $@
+$(IOS_ICONS_PATH)/icon@2x.png: $(IOS_ICONS_PATH)/icon-57@2x.png; cp $< $@
+$(IOS_ICONS_PATH)/icon-83.5@2x.png: $(IOS_ICONS_PATH)/icon-167.png; cp $< $@
+
+# Launch images (iOS)
+# Format: SIZE.NAME
+IOS_SPLASHES = \
+	640x1136.Default-568h@2x~iphone \
+	750x1334.Default-667h \
+	1242x2208.Default-736h \
+	2208x1242.Default-Landscape-736h \
+	2048x1536.Default-Landscape@2x~ipad \
+	1024x768.Default-Landscape~ipad \
+	1536x2048.Default-Portrait@2x~ipad \
+	768x1024.Default-Portrait~ipad \
+	640x960.Default@2x~iphone \
+	320x480.Default~iphone
+
+convert_splash_ios = convert -background white -gravity center -extent
+
+$(IOS_SPLASHES): $(ICON_SVG) $(IOS_ICON_PATH)
+	splash=$@; \
+	size=$${splash%%.*}; \
+	name=$${splash#*.}; \
+	$(convert_splash_ios) $$size $< $(IOS_ICONS_PATH)/$$name.png
+
+splashes: $(IOS_SPLASHES)
+
+# Only this rule must be used to generate the icons.
+icons: $(ANDROID_ICONS) $(IOS_ICONS)
+
+icons-android: $(ANDROID_ICONS)
+
+icons-ios: $(IOS_ICONS)
+
+$(CORDOVA_RES_PATH): $(CORDOVAPATH)
+	mkdir -p $(CORDOVA_RES_PATH)
+
+icons-cp-%: $(MOBILESTATICPATH)/res/% $(CORDOVA_RES_PATH)
+	cp -r $< $(CORDOVA_RES_PATH)
+
+icons-clean:
+	rm -rf $(IOS_ICONS_PATH) $(ANDROID_ICONS_PATH)
+
+##----------------------------------------------------------------------
+## Cleaning rules.
+
+mobile-clean: icons-clean
+	rm -rf $(CORDOVAPATH)
+	rm -f mobile/eliom_loader.byte mobile/eliom_loader.cmi \
+          mobile/eliom_loader.cmo

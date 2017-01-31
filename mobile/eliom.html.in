@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html class="os-client-app">
+  <head>
+    <title>%%PROJECTNAME%%</title>
+        <meta http-equiv="Content-Security-Policy"
+              content="default-src 'self' data: gap: https://ssl.gstatic.com
+                         %%APPSERVER%%;
+                       script-src 'self'
+                         https://ssl.gstatic.com
+                         'unsafe-eval'
+                         'unsafe-inline';
+                       style-src 'self' https://fonts.googleapis.com
+                         'unsafe-inline';
+                       font-src 'self' https://fonts.gstatic.com;
+                       connect-src *;
+                       img-src * data:; frame-src *;">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="msapplication-tap-highlight" content="no">
+    <meta name="viewport" content="user-scalable=no, initial-scale=1,
+                       maximum-scale=1, minimum-scale=1,
+                       width=device-width">
+    <link rel="stylesheet" type="text/css" href="css/%%PROJECTNAME%%.css">
+    <script>
+      //<![CDATA[
+      var __eliom_server = '%%APPSERVER%%%%APPPATH%%';
+      var __eliom_path = '%%APPPATH%%';
+      var __eliom_app_name = '%%APPNAME%%';
+      // var __eliom_debug_mode = true;
+      var __css_name = '%%PROJECTNAME%%.css';
+      // var __eliom_use_cookie_substitutes = true; // activate if you need cookies and you're using iOS WkWebView
+      //]]>
+    </script>
+    <script src="cordova.js"></script>
+    <script defer src="%%PROJECTNAME%%.js"></script>
+  </head>
+  <body>
+  </body>
+</html>

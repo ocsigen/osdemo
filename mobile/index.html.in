@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <!--
+        Customize this policy to fit your own app's needs. For more guidance, see:
+            https://github.com/apache/cordova-plugin-whitelist/blob/master/README.md#content-security-policy
+        Some notes:
+            * gap: is required only on iOS (when using UIWebView) and is needed for JS->native communication
+            * https://ssl.gstatic.com is required only on Android and is needed for TalkBack to function properly
+        -->
+        <meta http-equiv="Content-Security-Policy"
+              content="default-src 'self' data: gap: https://ssl.gstatic.com
+                         %%APPSERVER%%
+                         'unsafe-eval' 'unsafe-inline'">
+        <meta name="format-detection" content="telephone=no">
+        <meta name="msapplication-tap-highlight" content="no">
+        <meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width">
+        <link rel="stylesheet" type="text/css" href="css/index.css">
+        <title>%%MOBILE_APP_NAME%%</title>
+
+        <script>
+          //<![CDATA[
+          var __eliom_server = '%%APPSERVER%%%%APPPATH%%';
+          var __eliom_html_url = 'eliom.html';
+          var __eliom_app_name = '%%APPNAME%%';
+          // var __eliom_use_cookie_substitutes = true; // activate if you need cookies and you're using iOS WkWebView
+          //]]>
+        </script>
+    </head>
+    <body>
+        <div class="app blink" id="app-container">
+        </div>
+        <script type="text/javascript" src="cordova.js"></script>
+        <script type="text/javascript" src="eliom_loader.js"></script>
+    </body>
+</html>

@@ -1,0 +1,153 @@
+## ---------------------------------------------------------------------
+## This Makefile contains the rules about the database management.
+##
+## Ocsigen Start uses PostgreSQL so you need to install it.
+##
+## Ocsigen Start uses pg_ctl. If this executable is not found, an error occurs.
+##
+## Some variables like the PostgreSQL directory for log, the PostgreSQL
+## directory or the variables to access the database (like the database name or
+## the user) can be found and changed in the file Makefile.options
+
+## ---------------------------------------------------------------------
+## The following part defines some variables by adding the environment variables
+## to the used binaries.
+
+export PGHOST     := $(DB_HOST)
+export PGDATABASE := $(DB_NAME)
+export PGPORT     := $(DB_PORT)
+export PGUSER     := $(DB_USER)
+export PGPASSWORD := $(DB_PASSWORD)
+
+# Ocsigenserver uses the DB settings from osdemo.conf.in (which
+# should be the same as the exported variables above)
+OCSIGENSERVER     := $(OCSIGENSERVER)
+OCSIGENSERVER.OPT := $(OCSIGENSERVER.OPT)
+
+OPAM_LIB_DIR      := $(shell opam config var lib)
+OS_UPGRADE_FILE   := $(OPAM_LIB_DIR)/eliom/templates/os.pgocaml/upgrade.sql
+## ---------------------------------------------------------------------
+
+##----------------------------------------------------------------------
+
+pg_dump = pg_dump
+
+# Rule to get the pg_ctl binary.
+ifeq ($(shell psql --version 2> /dev/null),)
+$(error "PostgreSQL is not installed")
+else
+PSQL_VERSION := $(shell psql --version | cut -d' ' -f 3 | cut -d'.' -f 1-2)
+pg_ctl       := $(shell \
+                  sh -c "which pg_ctl" || \
+                  sh -c "echo /usr/lib/postgresql/$(PSQL_VERSION)/bin/pg_ctl")
+endif
+
+##----------------------------------------------------------------------
+
+## ---------------------------------------------------------------------
+## Here some rules to easily manage the database.
+# - db-init:
+#   Initialise the database. It creates the directory PSQL_DIR and
+#   start the database.
+#
+# - db-start:
+#   Start the database.
+#
+# - db-stop:
+#   Stop the database.
+#
+# - db-status:
+#   Get the database status.
+#
+# - db-create:
+#   Create the database and use UNICODE.
+#
+# - db-schema:
+#   Execute the SQL file contained in the PSQL_FILE
+#   variable to create the schema and the tables. By default, the PSQL_FILE is
+#   PROJECTNAME.sql. See Makefile.options.
+#
+# - db-upgrade:
+#   Upgrade the database schema related to Ocsigen Start to the newer database
+#   schema.
+#   It uses $(OS_UPGRADE_FILE) SQL file. You must not change it.
+#   Please read the upgrade information before calling this rule.
+#   Use it carefully!
+#
+# - db-drop:
+#   Drop the database but doesn't remove the database directory PSQL_DIR.
+#
+# - db-psql:
+#   Connect to the database.
+#
+# - db-delete:
+#   Stop the database (without error if it's not running) and remove
+#   the database directory containing all database data and the log file.
+#
+# Depending on the value of the LOCAL variable (defined in Makefile.options),
+# the database is created locally or globally. By default, the database is
+# local.
+
+##----------------------------------------------------------------------
+
+##----------------------------------------------------------------------
+
+$(PSQL_DIR):
+	-mkdir -p $@
+
+ifeq ($(LOCAL),yes)
+
+db-init: $(PSQL_DIR)
+	$(pg_ctl) initdb -o --encoding=UNICODE -D $(PSQL_DIR)
+	echo unix_socket_directories = \'/tmp\' >> $(PSQL_DIR)/postgresql.conf
+	$(pg_ctl) -o "-p $(DB_PORT)" -D $(PSQL_DIR) -l $(PSQL_LOG) start
+
+db-start:
+	$(pg_ctl) -o "-p $(DB_PORT)" -D $(PSQL_DIR) -l $(PSQL_LOG) start
+
+db-stop:
+	$(pg_ctl) -D $(PSQL_DIR) -l $(PSQL_LOG) stop
+
+db-status:
+	$(pg_ctl) -D $(PSQL_DIR) -l $(PSQL_LOG) status
+
+db-delete:
+	$(pg_ctl) -D $(PSQL_DIR) -l $(PSQL_LOG) stop || true
+	rm -f $(PSQL_LOG)
+	rm -rf $(PSQL_DIR)
+
+db-snapshot:
+	@echo "# Creating $(DB_SNAPSHOT)"
+	$(pg_dump) --clean --create --no-owner --encoding=utf8 \
+        $(DB_NAME) | gzip > $(DB_SNAPSHOT)
+
+else
+
+db-start:
+	$(pg_ctl) -o "-p $(DB_PORT)" start
+
+db-status:
+	$(pg_ctl) status
+
+db-stop:
+	$(pg_ctl) stop
+
+endif
+
+db-create:
+	createdb --encoding UNICODE $(DB_NAME)
+
+db-schema:
+	psql -d $(DB_NAME) -f $(PSQL_FILE)
+
+db-upgrade:
+	psql -d $(DB_NAME) -f $(OS_UPGRADE_FILE)
+
+db-drop:
+	dropdb $(DB_NAME)
+	dropdb ocsipersist_osdemo
+
+db-psql:
+	psql $(DB_NAME)
+
+##----------------------------------------------------------------------

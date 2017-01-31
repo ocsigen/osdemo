@@ -1,0 +1,150 @@
+<?xml version='1.0' encoding='utf-8'?>
+<widget id="%%APPID%%" version="%%MOBILE_APP_VERSION%%" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
+    <name>%%MOBILE_APP_NAME%%</name>
+    <description>
+      %%MOBILE_DESCRIPTION%%
+    </description>
+    <author email="%%MOBILE_AUTHOR_EMAIL%%" href="%%MOBILE_AUTHOR_HREF%%">
+      %%MOBILE_AUTHOR_DESCRIPTION%%
+    </author>
+    <content src="index.html" />
+    <plugin name="cordova-plugin-whitelist" spec="1" />
+    <access origin="*" />
+    <allow-intent href="http://*/*" />
+    <allow-intent href="https://*/*" />
+    <allow-intent href="tel:*" />
+    <allow-intent href="sms:*" />
+    <allow-intent href="mailto:*" />
+    <allow-intent href="geo:*" />
+
+    <!-- Android settings -->
+    <platform name="android">
+        <allow-intent href="market:*" />
+        <preference name="android-minSdkVersion" value="%%MOBILE_ANDROID_SDK_VERSION%%" />
+
+        <icon src="res/android/icon-36.png" density="ldpi" />
+        <icon src="res/android/icon-48.png" density="mdpi" />
+        <icon src="res/android/icon-72.png" density="hdpi" />
+        <icon src="res/android/icon-96.png" density="xhdpi" />
+        <icon src="res/android/icon-144.png" density="xxhdpi" />
+        <icon src="res/android/icon-192.png" density="xxxhdpi" />
+    </platform>
+
+    <!-- iOS settings -->
+    <platform name="ios">
+        <allow-intent href="itms:*" />
+        <allow-intent href="itms-apps:*" />
+
+        <!-- Workaround for a bug in Cordova that prevents iframes with external URLs -->
+        <allow-navigation href="*" />
+
+        <!-- iOS 8.0+ -->
+        <!-- iPhone 6 Plus  -->
+        <icon src="res/ios/icon-60@3x.png" width="180" height="180" />
+        <!-- iOS 7.0+ -->
+        <!-- iPhone / iPod Touch  -->
+        <icon src="res/ios/icon-60.png" width="60" height="60" />
+        <icon src="res/ios/icon-60@2x.png" width="120" height="120" />
+        <!-- iPad -->
+        <icon src="res/ios/icon-76.png" width="76" height="76" />
+        <icon src="res/ios/icon-76@2x.png" width="152" height="152" />
+        <!-- iOS 6.1 -->
+        <!-- Spotlight Icon -->
+        <icon src="res/ios/icon-40.png" width="40" height="40" />
+        <icon src="res/ios/icon-40@2x.png" width="80" height="80" />
+        <!-- iPhone / iPod Touch -->
+        <icon src="res/ios/icon.png" width="57" height="57" />
+        <icon src="res/ios/icon@2x.png" width="114" height="114" />
+        <!-- iPad -->
+        <icon src="res/ios/icon-72.png" width="72" height="72" />
+        <icon src="res/ios/icon-72@2x.png" width="144" height="144" />
+        <icon src="res/ios/icon-83.5@2x.png" width="167" height="167" />
+        <!-- iPhone Spotlight and Settings Icon -->
+        <icon src="res/ios/icon-small.png" width="29" height="29" />
+        <icon src="res/ios/icon-small@2x.png" width="58" height="58" />
+        <icon src="res/ios/icon-small@3x.png" width="87" height="87" />
+        <!-- iPad Spotlight and Settings Icon -->
+        <icon src="res/ios/icon-50.png" width="50" height="50" />
+        <icon src="res/ios/icon-50@2x.png" width="100" height="100" />
+
+         <!-- <preference name="DisallowOverscroll" value="true" /> -->
+         <!-- <preference name="WKWebViewDecelerationSpeed" value="normal" /> -->
+    </platform>
+
+    <!-- Plugins -->
+    <plugin name="cordova-plugin-whitelist" spec="1" />
+    <!-- <allow-navigation href="*" /> --><!-- this seems to be necessary for outside resources, e.g., outside videos in iframes -->
+    <!-- The CrossWalk plugin bundles a browser runtime. Enable this
+         if you are facing trouble with old versions of Android (4.x
+         and older). You may also want to enable the CrossWalk
+         settings as they appear later in this file. -->
+    <!-- <plugin name="cordova-plugin-crosswalk-webview" spec="~1.6.0" /> -->
+    <plugin name="cordova-hot-code-push-plugin" spec="~1.5.1" />
+    <!-- <plugin name="cordova-plugin-facebook4" spec="~1.7.0"> -->
+    <!--     <variable name="APP_ID" value="%%FACEBOOK_ID%%" /> -->
+    <!--     <variable name="APP_NAME" value="%%MOBILE_APP_NAME%%" /> -->
+    <!-- </plugin> -->
+    <plugin name="cordova-plugin-network-information" spec="~1.2.0" />
+    <plugin name="cordova-plugin-globalization" spec="~1.0.3" />
+
+    <!-- BEWARE OF ALL PLUGINS IN DEV VERSION: THEY ARE, BY DEFINITION, "UNSTABLE"!
+         ALSO, IF YOU START A NEW PROJECT, YOU MIGHT WANT TO CHECK FOR THE LATEST VERSIONS OF NON-DEV VERSIONS! -->
+
+    <plugin name="cordova-plugin-wkwebview-engine" spec="https://github.com/apache/cordova-plugin-wkwebview-engine.git" />
+
+    <!-- Status bar colors and other adjustments -->
+    <plugin name="cordova-plugin-statusbar" spec="https://github.com/apache/cordova-plugin-statusbar" />
+    <!-- use this alternative if you need tap on status bar to scroll up the page:
+         <plugin name="cordova-plugin-statusbar" spec="https://github.com/besport/cordova-plugin-statusbar" /> -->
+    <preference name="StatusBarBackgroundColor" value="#000000" />
+    <preference name="StatusBarStyle" value="default" />
+    <preference name="StatusBarOverlaysWebView" value="false" />
+    <!-- To be able to reduce the webview instead of having the keyboard push it up -->
+    <plugin name="cordova-plugin-keyboard" spec="~1.1.4" />
+    <preference name="KeyboardDisplayRequiresUserAction" value="false" />
+    <preference name="KeyboardShrinksView" value="false" />
+
+    <!-- Let app handle URLs corresponding to our host -->
+    <plugin name="cordova-universal-links-plugin" spec="~1.2.1" />
+    <universal-links>
+      <host name="%%APPHOST%%" scheme="%%APPSCHEME%%" %%APPPORTARG%% />
+    </universal-links>
+    <preference name="AndroidLaunchMode" value="singleInstance" />
+
+    <!-- For geolocation: -->
+    <!-- This plugin (or another one if you have one) is necessary if you need geolocation in your app: -->
+    <!-- <plugin name="cordova-plugin-geolocation" spec="https://github.com/apache/cordova-plugin-geolocation.git" /> -->
+    <!-- It might be helpful to know there are bindings for OCaml: https://github.com/dannywillems/ocaml-cordova-plugin-geolocation -->
+    <!-- If you have trouble with annoying popups on iOS regarding the usage of geolocation features,
+         do consider calling the function directly:
+         ```
+         cordova##exec
+           (Js.wrap_callback f_success_cordova)
+           (Js.wrap_callback f_error)
+           (Js.string "Geolocation")
+           (Js.string "getLocation")
+         ```
+         because webkit's version might take over otherwise.
+    -->
+
+    <!-- CrossWalk settings -->
+
+    <!-- <preference name="xwalkVersion" value="15+" /> -->
+    <!-- <preference name="xwalkCommandLine" value="&#45;&#45;disable&#45;pull&#45;to&#45;refresh&#45;effect" /> -->
+    <!-- <preference name="xwalkMode" value="embedded" /> -->
+    <!-- <preference name="xwalkMultipleApk" value="false" /> -->
+    <!-- <preference name="BackgroundColor" value="0xED393900" /> -->
+
+    <!-- Hot Code Push settings -->
+    <chcp>
+        <config-file url="%%APPSERVER%%%%APPPATH%%/update/conf/chcp.json"/>
+    </chcp>
+
+    <!-- Phonegap plugin push notification settings -->
+    <!-- Uncomment the following lines if you want to use push notifications -->
+    <!--
+    <plugin name="phonegap-plugin-push" spec="1.8.2" source="npm">
+        <variable name="SENDER_ID" value="%%MOBILE_NOTIFICATIONS_SENDER_ID%%" />
+    </plugin>
+    -->
+</widget>
