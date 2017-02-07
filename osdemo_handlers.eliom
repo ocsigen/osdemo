@@ -152,6 +152,7 @@ let%shared main_service_handler myid_o () () =
     ~a:[ a_class ["os-page-main"] ]
     myid_o (
     [ p [%i18n welcome_text1]
+    ; p [%i18n welcome_osdemo1]
     ; p [%i18n welcome_text2]
     ; ul [ li [%i18n welcome_text3]
          ; li [%i18n welcome_text4]
@@ -164,6 +165,13 @@ let%shared main_service_handler myid_o () () =
          ; li [%i18n welcome_text10]
          ]
     ; p [%i18n welcome_text11]
+    ; p [%i18n welcome_osdemo2
+          ~android:[a ~service:(Eliom_service.static_dir ())
+                      [pcdata "Android"]
+                      ["osdemo.apk"]]
+          ~ios:[a ~service:(Eliom_service.static_dir ())
+                      [pcdata "iOS"]
+                      ["osdemo-ios.tgz"]] ]
     ]
   )
 
