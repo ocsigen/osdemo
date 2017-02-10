@@ -178,7 +178,7 @@ CORDOVAPATH                    := cordova
 # config.xml.in, index.html.in, eliom_loader.ml, ...
 MOBILESTATICPATH               := mobile
 
-MOBILE_APP_ID                  := com.osdemo.mobile
+MOBILE_APP_ID                  := com.ocsigen.osdemo
 MOBILE_APP_NAME                := osdemo
 MOBILE_APP_VERSION             := 0.1
 MOBILE_DESCRIPTION             := osdemo mobile application
